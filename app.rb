@@ -4,7 +4,7 @@ require 'mongo'
 require 'digest/md5'
 
 get '/' do
-  'hello from sinatra'
+  'hello from sinatra - post v0.6'
 end
 
 get '/crash' do
@@ -25,11 +25,22 @@ post '/upload' do
 
   # put data to mongo gridfs
   db = get_mongo_db
-  grid = Mongo::Grid.new(db)
-  params[:file][:tempfile].rewind
-  id = grid.put(params[:file][:tempfile], :filename => params[:file][:filename], :safe => true)
-
   coll = db['fs.files']
+  grid = Mongo::Grid.new(db)
+  # remove exsited file
+  remove_file(coll, grid, params[:file][:filename])
+
+  params[:file][:tempfile].rewind
+  grid.put(params[:file][:tempfile], :filename => params[:file][:filename], :safe => true)
+
+  coll.find.to_a.to_json
+end
+
+delete '/files/:key' do
+  db = get_mongo_db
+  coll = db['fs.files']
+  grid = Mongo::Grid.new(db)
+  remove_file(coll, grid, params[:key])
   coll.find.to_a.to_json
 end
 
@@ -45,4 +56,10 @@ end
 def get_mongo_db
   conn = Mongo::Connection.new('127.0.0.1', 4567)
   db = conn['testdb']
+end
+
+def remove_file(collection, grid, filename)
+  collection.find('filename' => filename).each do |row|
+    grid.delete(row['_id'])
+  end
 end
