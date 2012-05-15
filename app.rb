@@ -1,10 +1,7 @@
 require 'sinatra'
 require 'json'
 require 'mongo'
-require 'uri'
-require 'base64'
 require 'digest/md5'
-require 'stringio'
 
 get '/' do
   'hello from sinatra'
@@ -14,22 +11,23 @@ get '/crash' do
   Process.kill("KILL", Process.pid)
 end
 
-post '/service/mongo/:key' do
-  # get data
-  data = Base64.decode64(request.env["rack.input"].read)
-  input_md5 = Digest::MD5.hexdigest(data)
-  puts input_md5
-  if params[:md5] != input_md5
+get '/upload' do
+  '<html><form method="post" enctype="multipart/form-data"><input type="file" ' +
+      'name="file"/><input type="submit"/></form></html>'
+end
+
+post '/upload' do
+  data = params[:file][:tempfile].read
+  md5 = Digest::MD5.hexdigest(data)
+  if params[:md5] != md5
     raise RuntimeError, "MD5 hash is different"
   end
 
   # put data to mongo gridfs
   db = get_mongo_db
   grid = Mongo::Grid.new(db)
-  io = StringIO.new
-  io.write(data)
-  io.rewind
-  id = grid.put(io, :filename => params[:key], :safe => true)
+  params[:file][:tempfile].rewind
+  id = grid.put(params[:file][:tempfile], :filename => params[:file][:filename], :safe => true)
 
   coll = db['fs.files']
   coll.find.to_a.to_json
