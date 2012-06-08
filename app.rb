@@ -57,15 +57,16 @@ post '/upload' do
   list_objs
 end
 
-delete '/files/:key' do
+delete '/files/:name' do
   load_vblob
   bucket = get_bucket
   begin
-    bucket.delete(params[:key])
+		#delete object from bucket: assets-storage
+		AWS::S3::S3Object.delete(params[:name],VBLOB_BUCKET_NAME)	
   rescue
-    puts "fail to delete #{params[:key]}"
+    puts "fail to delete #{params[:name]}"
   end
-  list_objs
+  puts "delete successfully"
 end
 
 VBLOB_BUCKET_NAME = 'assets-storage'
